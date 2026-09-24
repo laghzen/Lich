@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ipc-tilelang"
+version = "0.1.2"
+description = "Aggressively specialized incremental predictive coding kernels for RTX 3060 / SM86"
+requires-python = ">=3.10"
+dependencies = [
+  "torch",
+  "torchvision",
+  "numpy>=1.26",
+  "psutil>=5.9",
+  "tilelang==0.1.13",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

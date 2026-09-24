@@ -1,0 +1,5 @@
+torch
+torchvision
+numpy>=1.26
+psutil>=5.9
+tilelang==0.1.13
