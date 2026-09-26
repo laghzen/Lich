@@ -1,0 +1,180 @@
+{
+  "schema_version": 1,
+  "stage": "1.11-experiment-profile",
+  "device": "NVIDIA GeForce RTX 3060 Laptop GPU",
+  "capability": [
+    8,
+    6
+  ],
+  "note": "Experimental end-to-end profile assembled only from observed Stage 1.11 winners. Not final autotune.",
+  "entries": [
+    {
+      "kind": "prediction",
+      "shape": {
+        "M": 10,
+        "K": 64,
+        "B": 128
+      },
+      "activation": "relu",
+      "dtype": "float16",
+      "median_ms": 0.01944,
+      "config": {
+        "block_m": 16,
+        "block_n": 32,
+        "block_k": 64,
+        "threads": 64,
+        "num_stages": 2,
+        "swizzle": true,
+        "swizzle_panel": 8,
+        "shared_swizzle": false
+      }
+    },
+    {
+      "kind": "prediction",
+      "shape": {
+        "M": 64,
+        "K": 64,
+        "B": 128
+      },
+      "activation": "relu",
+      "dtype": "float16",
+      "median_ms": 0.01740800030529499,
+      "config": {
+        "block_m": 16,
+        "block_n": 64,
+        "block_k": 32,
+        "threads": 128,
+        "num_stages": 3,
+        "swizzle": false,
+        "swizzle_panel": 8,
+        "shared_swizzle": false
+      }
+    },
+    {
+      "kind": "prediction",
+      "shape": {
+        "M": 64,
+        "K": 784,
+        "B": 128
+      },
+      "activation": "relu",
+      "dtype": "float16",
+      "median_ms": 0.07065600156784058,
+      "config": {
+        "block_m": 16,
+        "block_n": 32,
+        "block_k": 64,
+        "threads": 64,
+        "num_stages": 2,
+        "swizzle": true,
+        "swizzle_panel": 8,
+        "shared_swizzle": false
+      }
+    },
+    {
+      "kind": "inference",
+      "shape": {
+        "M": 64,
+        "K": 10,
+        "B": 128
+      },
+      "activation": "relu",
+      "dtype": "float16",
+      "median_ms": 0.0184480007737875,
+      "config": {
+        "block_m": 16,
+        "block_n": 32,
+        "block_k": 64,
+        "threads": 64,
+        "num_stages": 2,
+        "swizzle": true,
+        "swizzle_panel": 8,
+        "shared_swizzle": false
+      }
+    },
+    {
+      "kind": "inference",
+      "shape": {
+        "M": 64,
+        "K": 64,
+        "B": 128
+      },
+      "activation": "relu",
+      "dtype": "float16",
+      "median_ms": 0.025,
+      "config": {
+        "block_m": 16,
+        "block_n": 32,
+        "block_k": 32,
+        "threads": 64,
+        "num_stages": 2,
+        "swizzle": true,
+        "swizzle_panel": 8,
+        "shared_swizzle": false
+      }
+    },
+    {
+      "kind": "weight",
+      "shape": {
+        "M": 10,
+        "K": 64,
+        "B": 128
+      },
+      "activation": "relu",
+      "dtype": "float16",
+      "median_ms": 0.019407999701797962,
+      "config": {
+        "block_m": 64,
+        "block_n": 128,
+        "block_k": 16,
+        "threads": 128,
+        "num_stages": 2,
+        "swizzle": true,
+        "swizzle_panel": 8,
+        "shared_swizzle": false
+      }
+    },
+    {
+      "kind": "weight",
+      "shape": {
+        "M": 64,
+        "K": 64,
+        "B": 128
+      },
+      "activation": "relu",
+      "dtype": "float16",
+      "median_ms": 0.0184,
+      "config": {
+        "block_m": 16,
+        "block_n": 32,
+        "block_k": 16,
+        "threads": 64,
+        "num_stages": 3,
+        "swizzle": false,
+        "swizzle_panel": 8,
+        "shared_swizzle": false
+      }
+    },
+    {
+      "kind": "weight",
+      "shape": {
+        "M": 64,
+        "K": 784,
+        "B": 128
+      },
+      "activation": "relu",
+      "dtype": "float16",
+      "median_ms": 0.048128001391887665,
+      "config": {
+        "block_m": 32,
+        "block_n": 64,
+        "block_k": 16,
+        "threads": 128,
+        "num_stages": 1,
+        "swizzle": true,
+        "swizzle_panel": 8,
+        "shared_swizzle": false
+      }
+    }
+  ]
+}

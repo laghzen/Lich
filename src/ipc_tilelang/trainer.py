@@ -7,7 +7,13 @@ import torch
 
 from .activations import ActivationSpec, get_activation
 from .reference import one_hot
-from .tilelang_kernels import KernelConfig, build_inference_update, build_prediction_error, build_weight_update
+from .tilelang_kernels import (
+    KernelConfig,
+    build_inference_update,
+    build_prediction_error,
+    build_weight_update,
+)
+from .tuning import TuningTable
 
 
 @dataclass(frozen=True)
@@ -19,6 +25,7 @@ class IPCConfig:
     dtype: torch.dtype = torch.float16
     kernel: KernelConfig = KernelConfig()
     recompute_activation: bool = True
+    tuning_table: TuningTable | None = None
 
 
 class TileLangIPC:
@@ -46,9 +53,22 @@ class TileLangIPC:
     def L(self) -> int:
         return len(self.w)
 
+    def _tuned_or_default(self, kind: str, M: int, K: int, B: int) -> KernelConfig:
+        if self.cfg.tuning_table is not None:
+            tuned = self.cfg.tuning_table.lookup(
+                kind=kind,
+                M=M,
+                K=K,
+                B=B,
+                activation=self.cfg.activation,
+                dtype=str(self.cfg.dtype).split(".")[-1],
+            )
+            if tuned is not None:
+                return tuned
+        return self.cfg.kernel
+
     def initialize_batch(self, x_input: torch.Tensor, y_target: torch.Tensor) -> None:
         """Reset endpoints and initialize hidden states by a forward prediction.
-
         Buffers are allocated once per batch-size shape and reused afterwards.
         """
         B = x_input.shape[1]
@@ -69,22 +89,42 @@ class TileLangIPC:
 
     def _get_prediction_kernel(self, l: int):
         return build_prediction_error(
-            self.cfg.dims[l], self.cfg.dims[l + 1], self.x[l].shape[1],
-            self.cfg.activation, str(self.cfg.dtype).split(".")[-1], self.cfg.kernel,
+            self.cfg.dims[l],
+            self.cfg.dims[l + 1],
+            self.x[l].shape[1],
+            self.cfg.activation,
+            str(self.cfg.dtype).split(".")[-1],
+            self._tuned_or_default(
+                "prediction", self.cfg.dims[l], self.cfg.dims[l + 1], self.x[l].shape[1]
+            ),
         )
 
     def _get_inference_kernel(self, l: int):
         return build_inference_update(
-            self.cfg.dims[l], self.cfg.dims[l - 1], self.x[l].shape[1],
-            self.cfg.activation, str(self.cfg.dtype).split(".")[-1], self.cfg.kernel, self.cfg.gamma,
+            self.cfg.dims[l],
+            self.cfg.dims[l - 1],
+            self.x[l].shape[1],
+            self.cfg.activation,
+            str(self.cfg.dtype).split(".")[-1],
+            self._tuned_or_default(
+                "inference", self.cfg.dims[l], self.cfg.dims[l - 1], self.x[l].shape[1]
+            ),
+            self.cfg.gamma,
             not self.cfg.recompute_activation,
         )
 
     def _get_weight_kernel(self, l: int):
         return build_weight_update(
-            self.cfg.dims[l], self.cfg.dims[l + 1], self.x[l].shape[1],
-            self.cfg.activation, str(self.cfg.dtype).split(".")[-1], self.cfg.kernel,
-            self.cfg.alpha, self.cfg.recompute_activation,
+            self.cfg.dims[l],
+            self.cfg.dims[l + 1],
+            self.x[l].shape[1],
+            self.cfg.activation,
+            str(self.cfg.dtype).split(".")[-1],
+            self._tuned_or_default(
+                "weight", self.cfg.dims[l], self.cfg.dims[l + 1], self.x[l].shape[1]
+            ),
+            self.cfg.alpha,
+            self.cfg.recompute_activation,
         )
 
     @torch.no_grad()
@@ -117,7 +157,6 @@ class TileLangIPC:
 
     def precompile(self) -> None:
         """Force JIT compilation of the current shape without changing model state.
-
         TileLang's eager JIT object exposes kernel source generation; calling it
         is sufficient to force construction/compilation while avoiding a hidden
         extra optimization step before CUDA-Graph capture.  A runtime fallback
@@ -126,7 +165,6 @@ class TileLangIPC:
         """
         if self.x is None or self.e is None:
             raise RuntimeError("Call initialize_batch before precompile")
-
         kernels = []
         for l in range(self.L):
             kernels.append(self._get_prediction_kernel(l))
@@ -140,9 +178,6 @@ class TileLangIPC:
                 _ = k.get_kernel_source()
             torch.cuda.synchronize()
             return
-
-        # Older TileLang fallback: preserve exact tensors around one compile
-        # warm-up execution so graph capture starts from the intended state.
         w_backup = [w.clone() for w in self.w]
         x_backup = [x.clone() for x in self.x]
         e_backup = [e.clone() for e in self.e]
@@ -159,7 +194,6 @@ class TileLangIPC:
     def capture_graph(self, steps: int):
         if self.x is None or self.e is None:
             raise RuntimeError("Call initialize_batch before capture_graph")
-        import torch
         from .cuda_graph import IPCGraphRunner
         runner = IPCGraphRunner(self, steps)
         runner.capture()
