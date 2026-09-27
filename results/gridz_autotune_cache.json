@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "results": {
+    "NVIDIA GeForce RTX 3060 Laptop GPU|(8, 6)|{\"batch\": 128, \"cap\": 0, \"dims\": [10, 64, 64, 64, 64, 784]}": {
+      "ms": 0.39163520336151125
+    },
+    "NVIDIA GeForce RTX 3060 Laptop GPU|(8, 6)|{\"batch\": 128, \"cap\": 2, \"dims\": [10, 64, 64, 64, 64, 784]}": {
+      "ms": 0.2994175910949707
+    },
+    "NVIDIA GeForce RTX 3060 Laptop GPU|(8, 6)|{\"batch\": 128, \"cap\": 3, \"dims\": [10, 64, 64, 64, 64, 784]}": {
+      "ms": 0.22955520153045655
+    },
+    "NVIDIA GeForce RTX 3060 Laptop GPU|(8, 6)|{\"batch\": 128, \"cap\": 0, \"dims\": [10, 64, 64, 64, 64, 64, 64, 784]}": {
+      "ms": 0.5394432067871093
+    },
+    "NVIDIA GeForce RTX 3060 Laptop GPU|(8, 6)|{\"batch\": 128, \"cap\": 2, \"dims\": [10, 64, 64, 64, 64, 64, 64, 784]}": {
+      "ms": 0.37871360778808594
+    },
+    "NVIDIA GeForce RTX 3060 Laptop GPU|(8, 6)|{\"batch\": 128, \"cap\": 3, \"dims\": [10, 64, 64, 64, 64, 64, 64, 784]}": {
+      "ms": 0.3935744047164917
+    },
+    "NVIDIA GeForce RTX 3060 Laptop GPU|(8, 6)|{\"batch\": 128, \"cap\": 4, \"dims\": [10, 64, 64, 64, 64, 64, 64, 784]}": {
+      "ms": 0.7573503971099853
+    }
+  }
+}

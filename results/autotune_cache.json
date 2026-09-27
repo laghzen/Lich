@@ -1,0 +1,155 @@
+{
+  "schema_version": 1,
+  "results": {
+    "ef1028d719402a6fd9892f19cddaa89f15f825edf672fd47cb4cd55434782144": {
+      "status": "ok",
+      "kind": "prediction",
+      "shape": {
+        "M": 64,
+        "K": 64,
+        "B": 128
+      },
+      "activation": "relu",
+      "dtype": "float16",
+      "median_ms": 0.03891199827194214,
+      "config": {
+        "block_m": 64,
+        "block_n": 128,
+        "block_k": 16,
+        "threads": 128,
+        "num_stages": 2,
+        "swizzle": true,
+        "swizzle_panel": 8,
+        "shared_swizzle": false
+      },
+      "registers_estimate": null,
+      "spill_suspected": false,
+      "source_available": true
+    },
+    "dddc4288c32b0e1afc8e4ad522c0ee2c26e0b8c8a230da94bead0d7864401f06": {
+      "status": "ok",
+      "kind": "prediction",
+      "shape": {
+        "M": 64,
+        "K": 64,
+        "B": 128
+      },
+      "activation": "relu",
+      "dtype": "float16",
+      "median_ms": 0.020416000857949257,
+      "config": {
+        "block_m": 256,
+        "block_n": 32,
+        "block_k": 64,
+        "threads": 256,
+        "num_stages": 1,
+        "swizzle": false,
+        "swizzle_panel": 8,
+        "shared_swizzle": false
+      },
+      "registers_estimate": null,
+      "spill_suspected": false,
+      "source_available": true
+    },
+    "9ade4ea9b28ba5708419ef35aac46756ad5af643b9a010c970c01a150021adde": {
+      "status": "ok",
+      "kind": "prediction",
+      "shape": {
+        "M": 64,
+        "K": 64,
+        "B": 128
+      },
+      "activation": "relu",
+      "dtype": "float16",
+      "median_ms": 0.03481600061058998,
+      "config": {
+        "block_m": 16,
+        "block_n": 32,
+        "block_k": 64,
+        "threads": 64,
+        "num_stages": 1,
+        "swizzle": false,
+        "swizzle_panel": 8,
+        "shared_swizzle": false
+      },
+      "registers_estimate": null,
+      "spill_suspected": false,
+      "source_available": true
+    },
+    "dd03f0d72fa87acca25d700daa86003d7278c4cea98950d7533440792f144577": {
+      "status": "ok",
+      "kind": "prediction",
+      "shape": {
+        "M": 64,
+        "K": 64,
+        "B": 128
+      },
+      "activation": "relu",
+      "dtype": "float16",
+      "median_ms": 0.02252800017595291,
+      "config": {
+        "block_m": 32,
+        "block_n": 32,
+        "block_k": 16,
+        "threads": 256,
+        "num_stages": 3,
+        "swizzle": true,
+        "swizzle_panel": 8,
+        "shared_swizzle": false
+      },
+      "registers_estimate": null,
+      "spill_suspected": false,
+      "source_available": true
+    },
+    "10af7c899cc34c0c21f33bfa3b38f0b0c2699c97cc373885aed723ca9c6b2101": {
+      "status": "ok",
+      "kind": "prediction",
+      "shape": {
+        "M": 64,
+        "K": 64,
+        "B": 128
+      },
+      "activation": "relu",
+      "dtype": "float16",
+      "median_ms": 0.025599999353289604,
+      "config": {
+        "block_m": 32,
+        "block_n": 256,
+        "block_k": 32,
+        "threads": 256,
+        "num_stages": 1,
+        "swizzle": false,
+        "swizzle_panel": 8,
+        "shared_swizzle": false
+      },
+      "registers_estimate": null,
+      "spill_suspected": false,
+      "source_available": true
+    },
+    "aa7778053bf9083893b3f9312f47dda51c8b120be89f77dbf8810591bebff44a": {
+      "status": "ok",
+      "kind": "prediction",
+      "shape": {
+        "M": 64,
+        "K": 64,
+        "B": 128
+      },
+      "activation": "relu",
+      "dtype": "float16",
+      "median_ms": 0.050175998359918594,
+      "config": {
+        "block_m": 256,
+        "block_n": 32,
+        "block_k": 64,
+        "threads": 128,
+        "num_stages": 1,
+        "swizzle": true,
+        "swizzle_panel": 8,
+        "shared_swizzle": false
+      },
+      "registers_estimate": null,
+      "spill_suspected": false,
+      "source_available": true
+    }
+  }
+}

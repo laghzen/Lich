@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "entries": {
+    "{\"activation\":\"relu\",\"batch\":128,\"capability\":[8,6],\"device\":\"NVIDIA GeForce RTX 3060 Laptop GPU\",\"dims\":\"10x64x64x64x64x784\",\"dtype\":\"float16\"}": {
+      "grid_z_max_layers": 3,
+      "ms": 0.22955520153045655,
+      "candidates": [
+        {
+          "cap": 0,
+          "ms": 0.39163520336151125,
+          "source": "gpu",
+          "groups": []
+        },
+        {
+          "cap": 2,
+          "ms": 0.2994175910949707,
+          "source": "gpu",
+          "groups": [
+            [
+              1,
+              2,
+              2
+            ]
+          ]
+        },
+        {
+          "cap": 3,
+          "ms": 0.22955520153045655,
+          "source": "gpu",
+          "groups": [
+            [
+              1,
+              3,
+              3
+            ]
+          ]
+        }
+      ]
+    },
+    "{\"activation\":\"relu\",\"batch\":128,\"capability\":[8,6],\"device\":\"NVIDIA GeForce RTX 3060 Laptop GPU\",\"dims\":\"10x64x64x64x64x64x64x784\",\"dtype\":\"float16\"}": {
+      "grid_z_max_layers": 2,
+      "ms": 0.37871360778808594,
+      "candidates": [
+        {
+          "cap": 0,
+          "ms": 0.5394432067871093,
+          "source": "gpu",
+          "groups": []
+        },
+        {
+          "cap": 2,
+          "ms": 0.37871360778808594,
+          "source": "gpu",
+          "groups": [
+            [
+              1,
+              2,
+              2
+            ],
+            [
+              4,
+              5,
+              2
+            ]
+          ]
+        },
+        {
+          "cap": 3,
+          "ms": 0.3935744047164917,
+          "source": "gpu",
+          "groups": [
+            [
+              1,
+              3,
+              3
+            ]
+          ]
+        },
+        {
+          "cap": 4,
+          "ms": 0.7573503971099853,
+          "source": "gpu",
+          "groups": [
+            [
+              1,
+              4,
+              4
+            ]
+          ]
+        }
+      ]
+    }
+  }
+}
