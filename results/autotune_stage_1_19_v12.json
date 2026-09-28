@@ -1,0 +1,115 @@
+{
+  "schema_version": 2,
+  "stage": "1.19",
+  "device": "NVIDIA GeForce RTX 3060 Laptop GPU",
+  "capability": [
+    8,
+    6
+  ],
+  "tilelang_version": "0.1.13",
+  "entries": [
+    {
+      "kind": "prediction",
+      "shape": {
+        "M": 64,
+        "K": 64,
+        "B": 128
+      },
+      "activation": "relu",
+      "dtype": "float16",
+      "median_ms": 0.015359999611973763,
+      "config": {
+        "block_m": 32,
+        "block_n": 32,
+        "block_k": 16,
+        "threads": 64,
+        "num_stages": 3,
+        "swizzle": false,
+        "swizzle_panel": 8,
+        "shared_swizzle": false
+      }
+    }
+  ],
+  "results": [
+    {
+      "kind": "prediction",
+      "shape": {
+        "M": 64,
+        "K": 64,
+        "B": 128
+      },
+      "activation": "relu",
+      "dtype": "float16",
+      "candidate_pool": 756,
+      "legal_pool": 612,
+      "static_invalid": 144,
+      "tested": 28,
+      "successful": 34,
+      "compile_failures": 0,
+      "correctness_failures": 0,
+      "model_pruned": 0,
+      "region_pruned": 0,
+      "untested": 584,
+      "search_engine": "online_racing_v12_fast_knn_ei_batch_racing",
+      "adaptive_search": true,
+      "hierarchical_pruning": false,
+      "stratified_acquisition": true,
+      "stopped_by_global_bound": false,
+      "rounds": 7,
+      "best": [
+        {
+          "median_ms": 0.015359999611973763,
+          "config": {
+            "block_m": 32,
+            "block_n": 32,
+            "block_k": 16,
+            "threads": 64,
+            "num_stages": 3,
+            "swizzle": false,
+            "swizzle_panel": 8,
+            "shared_swizzle": false
+          }
+        }
+      ],
+      "rejected": {
+        "shared_memory": 144
+      },
+      "cache": "results/autotune_adaptive.sqlite",
+      "legacy_cache": "results/autotune_cache.json",
+      "legacy_cache_imported": 0,
+      "legacy_cache_replaced_probe": 0,
+      "new_gpu_evals": 28,
+      "verification_gpu_evals": 12,
+      "cache_hits": 0,
+      "active_untested": 584
+    }
+  ],
+  "search": {
+    "search_engine": "online_racing_v12_fast_knn_ei_batch_racing",
+    "global_candidate_pool": 756,
+    "evaluation_budget": "unlimited_until_frontier_exhausted_or_pruned",
+    "deprecated_max_evals_argument": null,
+    "seed_evals": 10,
+    "batch_size": 6,
+    "probe": {
+      "warmup": 2,
+      "rep": 5
+    },
+    "verification": {
+      "warmup": 10,
+      "rep": 40,
+      "topk": 6
+    },
+    "beta": 3.5,
+    "prune_margin": 0.0,
+    "cache": "results/autotune_adaptive.sqlite",
+    "legacy_cache": "results/autotune_cache.json",
+    "semantic_tree": true,
+    "factorized_surrogate": true,
+    "hierarchical_pruning": true,
+    "stratified_acquisition": true,
+    "persistent_failure_memory": true,
+    "full_space_representation": true,
+    "claim": "entire finite legal space represented; only a data-dependent subset is benchmarked; statistical pruning is not a proof of a global optimum"
+  }
+}
