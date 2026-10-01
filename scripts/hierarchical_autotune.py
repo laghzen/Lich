@@ -23,7 +23,7 @@ from ipc_tilelang.hierarchical_policy import kernel_signature
 from ipc_tilelang.adaptive import AdaptiveFiniteTuner
 
 
-STAGE_VERSION = "2.2"
+STAGE_VERSION = "2.3"
 EXECUTION_CACHE_VERSION = 4
 KERNEL_RESULT_SIDECAR_VERSION = 2
 SEARCH_SPACE_VERSION = "sm86-v3-eval-order"
@@ -987,7 +987,7 @@ def tune_depth_full(
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Stage 2.2 hierarchical iPC autotuner with locked v12 Level 1")
+    p = argparse.ArgumentParser(description="Stage 2.3 hierarchical iPC autotuner with locked v12 Level 1")
     p.add_argument("--depths", type=int, nargs="+", default=[3, 4, 6])
     p.add_argument("--hidden", type=int, default=64)
     p.add_argument("--batch", type=int, default=128)
@@ -1004,7 +1004,7 @@ def main() -> None:
     p.add_argument(
         "--reuse-kernel-result", "--reuse-level1",
         action="store_true", dest="reuse_kernel_result",
-        help="Explicitly reuse a compatible existing Level-1 result (including its recorded fresh observations)",
+        help="STRICT: reuse the existing compatible Level-1 result; NEVER launch autotune.py",
     )
     p.add_argument("--kernel-batch-size", type=int, default=6)
     p.add_argument("--seed-evals", type=int, default=10)
@@ -1056,26 +1056,20 @@ def main() -> None:
             raise RuntimeError(f"--skip-kernel requested but kernel result is incompatible: {reason}/{side_reason}")
         print(f"Level 1: explicit reuse {kernel_out}")
     elif a.reuse_kernel_result:
+        # STRICT reuse mode: this flag is a hard prohibition on launching Level 1.
+        # A missing/incompatible result is an error, never a reason to fall back to v12.
         compatible, reason = kernel_result_compatible(kernel_out, device=device)
+        side_ok, side_reason = True, "sidecar_missing_ignored"
         sidecar = kernel_out.with_suffix(kernel_out.suffix + ".stage2meta.json")
-        if compatible:
-            if sidecar.exists():
-                side_ok, side_reason = sidecar_compatible(kernel_out, device=device)
-            else:
-                # The Level-1 JSON already contains the exact v12 engine/device/toolchain
-                # identity needed for compatibility. A sidecar is acceleration metadata,
-                # not a prerequisite for reusing an already completed measured run.
-                side_ok, side_reason = True, "sidecar_missing_ignored"
-            if side_ok:
-                print(f"Level 1: REUSING MEASURED RESULT {kernel_out} (no Level-1 rerun)")
-            else:
-                print(f"Level 1: reuse unavailable ({reason}/{side_reason}); running fresh locked v12")
-                run_kernel_stage(a, kernel_out)
-                write_kernel_sidecar(kernel_out, device=device)
-        else:
-            print(f"Level 1: reuse unavailable ({reason}); running fresh locked v12")
-            run_kernel_stage(a, kernel_out)
-            write_kernel_sidecar(kernel_out, device=device)
+        if compatible and sidecar.exists():
+            side_ok, side_reason = sidecar_compatible(kernel_out, device=device)
+        if not compatible or not side_ok:
+            raise RuntimeError(
+                "STRICT Level-1 reuse requested; refusing to run Level 1. "
+                f"Existing result is not reusable: {reason}/{side_reason}. "
+                f"Provide a compatible measured JSON at {kernel_out}."
+            )
+        print(f"Level 1: REUSING MEASURED RESULT {kernel_out} (STRICT; autotune.py will NOT be launched)")
     else:
         print("Level 1: fresh locked-v12 search (no persistent measurement reuse)")
         run_kernel_stage(a, kernel_out)
