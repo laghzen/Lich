@@ -1,110 +1,132 @@
-# iPC / RTX 3060 — performance master checklist
+# iPC / RTX 3060 Laptop GPU — performance master checklist
 
-Legend: `[x]` implemented, `[~]` scaffolded/needs measurement on the real GPU, `[ ]` not implemented yet.
+Target platform: NVIDIA GeForce RTX 3060 Laptop GPU, SM86 `(8, 6)`, 6 GiB VRAM. The project intentionally targets one fixed GPU so tuning decisions can be specialized to this machine.
 
 ## 1. Correctness and paper parity
+
 - [x] PyTorch/FP32 reference equations.
-- [x] Fixed `x[0]` target and `x[L]` input convention.
+- [x] `x[0]` target and `x[L]` input convention fixed.
 - [x] Correct `W_lower[K,M]` inference layout.
 - [x] Tail-safe prediction/error path.
-- [x] Tail-safe recompute activation path, including `f(0) != 0` activations.
-- [ ] Full SM86 numerical comparison for every activation.
+- [x] Tail-safe activation recomputation, including `f(0) != 0` activations.
+- [x] Core SM86 smoke coverage for regular/tail/save-A paths.
+- [ ] Complete numerical comparison for every supported activation.
 - [ ] Reproduce MNIST MLP 784→64→64→10.
-- [ ] Reproduce discriminative efficiency sweep with 64 hidden units, depths 3/4/6.
-- [ ] 5-seed paper-style accuracy/convergence study where all implementation details are pinned.
+- [ ] Reproduce paper-style discriminative efficiency sweep (hidden=64, depths 3/4/6).
+- [ ] 5-seed paper-style convergence/generalization study with all implementation details pinned.
 
 ## 2. Memory lifetime
+
 - [x] Persistent W/X/E buffers.
 - [x] In-place X update.
-- [x] Do not materialize `mu`.
-- [x] Do not materialize `W^T E` inference signal.
-- [x] Do not materialize `f'(X)`.
-- [x] Save-A vs recompute-A switch.
-- [ ] Automatic save-vs-recompute cost model.
-- [ ] Automatic register/shared/recompute placement.
-- [ ] Full intermediate lifetime analysis.
+- [x] No global `mu` materialization.
+- [x] No global `W^T E` inference-signal materialization.
+- [x] No global `f'(X)` materialization.
+- [x] Save-A vs recompute-A paths.
+- [x] Recompute policy selected by Stage 2 execution search.
+- [ ] Full automatic lifetime/resource cost model.
+- [ ] Automatic register/shared/recompute placement model.
 
 ## 3. Kernel fusion
-- [x] Activation fused into prediction path.
-- [x] Prediction and error fused.
+
+- [x] Activation fused into prediction.
+- [x] Prediction + error fused.
 - [x] Derivative fused into inference update.
 - [x] X update fused with inference epilogue.
 - [x] Activation recomputation fused into weight-gradient path.
-- [ ] Fused optimizer epilogue.
-- [ ] Layer-grouped fused execution.
-- [ ] Experiment with safe iteration-level fusion.
+- [ ] Fused optimizer epilogue for the selected optimizer.
+- [x] Layer-grouped execution kernels.
+- [ ] Safe iteration-level fusion beyond current CUDA Graph path.
 
-## 4. Tensor Core / tiling
+## 4. Tensor Core / tiling / kernel autotuning
+
 - [x] Target `sm_86`.
 - [x] FP16 storage / FP32 accumulation baseline.
-- [~] BM search.
-- [~] BN search.
-- [~] BK search.
-- [~] thread-count search.
-- [~] pipeline-stage search.
-- [~] shared-memory swizzle search.
-- [~] CTA rasterization search.
+- [x] BM search through locked Stage 1.19 v12.
+- [x] BN search through locked Stage 1.19 v12.
+- [x] BK search through locked Stage 1.19 v12.
+- [x] Thread-count search through locked Stage 1.19 v12.
+- [x] Pipeline-stage search through locked Stage 1.19 v12.
+- [x] Shared-memory swizzle search through locked Stage 1.19 v12.
+- [x] CTA/grid policy search in Stage 2.
+- [x] Independent P/I/W kernel tables.
 - [ ] Register-pressure pruning.
-- [ ] Detect register spills from generated CUDA/PTX.
-- [ ] Independent autotune tables for prediction / inference / weight update.
+- [ ] Generated-kernel register-spill detection integrated into acceptance.
+- [ ] Resource/occupancy-aware scoring.
 
-## 5. Weight update
-- [x] GEMM path for `E @ A^T`.
-- [ ] Small-B outer-product path.
-- [ ] Empirical crossover B*.
-- [ ] Fused SGD.
-- [ ] Fused AdamW.
-- [ ] Gradient never materialized globally.
+## 5. Adaptive autotuning
 
-## 6. Layer parallelism
-- [ ] Group identical layer shapes.
-- [ ] `grid.z = layer/group` kernels.
-- [ ] Separate kernels for small/medium/large layers.
-- [ ] L2-aware CTA scheduling.
-- [ ] Layer-batched repeated blocks.
+- [x] Deterministic static legality filtering.
+- [x] Full legal finite-space representation.
+- [x] Semantic-tree exploration.
+- [x] Online EI/local racing.
+- [x] Global scouts.
+- [x] Factorized local surrogate.
+- [x] Conservative region pruning.
+- [x] Persistent failure memory.
+- [x] Fresh-run discovery without requiring persistent measurement cache.
+- [x] Locked v12 reference engine.
+- [ ] Do not claim mathematical global optimum from a finite adaptive sample.
 
-## 7. Runtime
+## 6. Level 2 execution policy
+
+- [x] Group identical hidden-layer shapes.
+- [x] `grid.z` layer batching.
+- [x] Shape/depth-dependent Z policy.
+- [x] CUDA Graph A/B.
+- [x] Hierarchical search over P/I/W kernel alternatives plus execution parameters.
+- [x] Recompute-policy search.
+- [x] Fresh Level-1 top-K carried into Level 2.
+- [x] Level-2 execution results keyed by exact kernel signature.
+- [x] Two coordinate passes and pairwise rescue surface.
+- [x] Final exhaustive topology matrix for the selected kernel table.
+
+## 7. Runtime / steady state
+
 - [x] Reusable GPU allocations.
-- [x] CUDA Graph scaffold.
-- [ ] Graph benchmark vs normal launches.
-- [ ] Pinned host memory.
-- [ ] Async H2D prefetch.
-- [ ] CPU/GPU pipeline overlap.
-- [ ] Remove all per-step Python overhead from the steady-state path.
+- [x] CUDA Graph capture scaffold.
+- [x] CUDA Graph benchmark.
+- [x] Stage 2.3 runtime execution-plan caching: kernel handles prepared once and reused across `step_initialized()`.
+- [x] Per-batch active-kernel-signature caching.
+- [x] Per-batch recompute-policy caching.
+- [x] One-time grid-z policy application per batch within a trainer lifetime.
+- [ ] Complete steady-state graph integration in the public training CLI.
+- [ ] Pinned host memory where host staging exists.
+- [ ] Async H2D prefetch where input pipeline exists.
+- [ ] CPU/GPU input pipeline overlap.
 
-## 8. Thermal / power stability
-- [x] Rate-limited telemetry.
-- [x] Temperature ceiling + hysteresis.
-- [x] Throttle-reason monitoring.
-- [~] 120 s sustained benchmark.
+## 8. Weight update specialization
+
+- [x] GEMM path for `E @ A^T`.
+- [ ] Small-B outer-product alternative.
+- [ ] Empirical crossover `B*` between weight-update implementations.
+- [ ] Fused SGD epilogue.
+- [ ] Fused AdamW epilogue.
+- [ ] Eliminate any remaining unnecessary global gradient materialization.
+
+## 9. Thermal / sustained acceptance
+
+- [~] Sustained benchmark on the real laptop GPU.
 - [ ] Per-machine sustainable clock profile.
 - [ ] Reject cold-start-only winners.
 - [ ] Temperature-aware autotuning objective.
-- [ ] Long-run (>10 min) stability verification.
+- [ ] Long-run (>10 min) final stability verification for the accepted policy.
+- [ ] Final acceptance must use sustained end-to-end throughput, not cold-start kernel latency.
 
-## 9. Acceptance criteria
-A configuration is accepted only when all are true:
+## 10. Historical performance notes
 
-- Correct against FP32 reference within the configured numerical tolerance.
-- Warmed-up end-to-end iPC throughput is measured.
-- No register spills that materially damage performance.
-- No illegal memory access / race / intermittent correctness failure.
-- VRAM remains within the 6 GiB device budget with a safety margin.
-- After sustained load, temperature remains below the project ceiling.
-- No thermal slowdown is observed in the accepted sustained run.
-- The configuration wins on sustained end-to-end throughput, not on cold-start kernel latency.
+- Historical runs have observed approximately `0.0152 ms` for one prediction workload, but this is not the current reproducible acceptance result and must not be treated as a guaranteed optimum.
+- Current clean-run Level-1 examples have reached approximately `0.0174–0.0184 ms` on the 64×64×128 prediction workload, depending on run conditions.
+- Stage 2 execution benchmarks have demonstrated substantial launch-overhead reductions with CUDA Graph, but those benchmark coefficients must not be arithmetically multiplied with independent Stage-1 speedups.
 
-## Stage 1.4 Windows/bootstrap
-- [x] Fix nested cmd.exe quoting for vcvars64.bat.
-- [x] Add separated-source bootstrap and `run_cli.py`.
-- [ ] Toolchain probe passes with native MSVC cl.exe.
+## 11. Final acceptance gate
 
-[x] fixed vcvars64 invocation through temporary .cmd
-[x] explicit selected MSVC bin first in PATH
-[x] toolchain diagnostic reports selected compiler
-[ ] successful toolchain probe on user Windows host
+An accepted configuration must satisfy all of:
 
-
-## Stage 1.7
-[x] TileLang JIT receives explicit `-ccbin=<MSVC cl.exe>`
-[ ] TileLang prediction kernel compiles/execututes with native MSVC
+- numerically correct against the configured reference tolerance;
+- legal and free of intermittent races/access faults;
+- warm end-to-end throughput measured on the target GPU;
+- VRAM within the 6 GiB budget with safety margin;
+- stable under sustained load;
+- no thermal slowdown during the acceptance window;
+- final policy corresponds to the exact kernel/runtime fingerprint that was measured.
