@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Sequence
 
 import torch
@@ -21,6 +21,7 @@ from .layer_batching import (
     find_internal_square_groups,
 )
 from .tuning import TuningTable
+from .hierarchical_policy import HierarchicalPolicy, kernel_signature
 
 
 @dataclass(frozen=True)
@@ -37,6 +38,8 @@ class IPCConfig:
     grid_z_max_layers: int = 2
     grid_z_auto: bool = True
     grid_z_policy_path: str = "results/gridz_policy.json"
+    hierarchical_policy_auto: bool = True
+    hierarchical_policy_path: str = "results/hierarchical_policy.json"
 
 
 class TileLangIPC:
@@ -50,6 +53,13 @@ class TileLangIPC:
         self.cfg = cfg
         self.device = device
         self.act = get_activation(cfg.activation)
+        self._hierarchical_policy: HierarchicalPolicy | None = None
+        self._runtime_recompute_activation = bool(cfg.recompute_activation)
+        if cfg.hierarchical_policy_auto:
+            try:
+                self._hierarchical_policy = HierarchicalPolicy(cfg.hierarchical_policy_path)
+            except Exception:
+                self._hierarchical_policy = None
         grid_z_cap = int(cfg.grid_z_max_layers)
         self._grid_z_cap = max(0, grid_z_cap)
         self._layer_groups: tuple[LayerBatchGroup, ...] = (
@@ -93,7 +103,46 @@ class TileLangIPC:
     def L(self) -> int:
         return len(self.w)
 
+    def _apply_hierarchical_recompute_policy(self, batch: int) -> None:
+        """Apply the exact depth/kernel-signature recompute policy before buffer allocation."""
+        selected = bool(self.cfg.recompute_activation)
+        if self._hierarchical_policy is not None:
+            try:
+                sig = self._active_kernel_signature(int(batch))
+                selected = self._hierarchical_policy.selected_recompute_activation(
+                    dims=self.cfg.dims, batch=int(batch), activation=self.cfg.activation,
+                    dtype=self.cfg.dtype, kernel_sig=sig, default=selected,
+                )
+            except Exception:
+                selected = bool(self.cfg.recompute_activation)
+        self._runtime_recompute_activation = bool(selected)
+
+    @property
+    def recompute_activation(self) -> bool:
+        return bool(self._runtime_recompute_activation)
+
     def _tuned_or_default(self, kind: str, M: int, K: int, B: int) -> KernelConfig:
+        if self._hierarchical_policy is not None:
+            try:
+                tuned = self._hierarchical_policy.lookup_profile_kernel(
+                    dims=tuple(int(d) for d in self.cfg.dims),
+                    batch=int(B),
+                    kind=kind,
+                    M=M,
+                    K=K,
+                    activation=self.cfg.activation,
+                    dtype=self.cfg.dtype,
+                )
+            except Exception:
+                tuned = None
+            if tuned is not None:
+                return tuned
+            tuned = self._hierarchical_policy.lookup_kernel(
+                kind=kind, M=M, K=K, B=B,
+                activation=self.cfg.activation, dtype=self.cfg.dtype,
+            )
+            if tuned is not None:
+                return tuned
         if self.cfg.tuning_table is not None:
             tuned = self.cfg.tuning_table.lookup(
                 kind=kind,
@@ -107,23 +156,77 @@ class TileLangIPC:
                 return tuned
         return self.cfg.kernel
 
+    def _active_kernel_signature(self, batch: int) -> str:
+        rows = []
+        seen = set()
+        for l in range(self.L):
+            shapes = (
+                ("prediction", self.cfg.dims[l], self.cfg.dims[l + 1]),
+                ("weight", self.cfg.dims[l], self.cfg.dims[l + 1]),
+            )
+            if l > 0:
+                shapes += (("inference", self.cfg.dims[l], self.cfg.dims[l - 1]),)
+            for kind, M, K in shapes:
+                key = (kind, M, K, batch)
+                if key in seen:
+                    continue
+                seen.add(key)
+                rows.append({
+                    "kind": kind,
+                    "shape": {"M": M, "K": K, "B": batch},
+                    "activation": self.cfg.activation,
+                    "dtype": str(self.cfg.dtype).split(".")[-1],
+                    "config": asdict(self._tuned_or_default(kind, M, K, batch)),
+                })
+        return kernel_signature(rows)
+
+    def recommended_use_cuda_graph(self, batch: int | None = None, *, default: bool = False) -> bool:
+        """Return the Stage-2 graph recommendation for the active shape, when available."""
+        if self._hierarchical_policy is None:
+            return bool(default)
+        if batch is None:
+            if self.x is None:
+                return bool(default)
+            batch = int(self.x[-1].shape[1])
+        try:
+            sig = self._active_kernel_signature(int(batch))
+            return self._hierarchical_policy.selected_use_graph(
+                dims=self.cfg.dims, batch=int(batch), activation=self.cfg.activation,
+                dtype=self.cfg.dtype, kernel_sig=sig, default=default,
+            )
+        except Exception:
+            return bool(default)
+
     def _grouped_edge_indices(self) -> set[int]:
         return set(self._edge_to_group)
 
     def _apply_grid_z_policy(self, batch: int) -> None:
         if not self.cfg.use_grid_z or not self.cfg.grid_z_auto:
             return
-        from .gridz_tuning import lookup_grid_z_cap
-        cap = lookup_grid_z_cap(
-            self.cfg.grid_z_policy_path,
-            device_name=torch.cuda.get_device_name(self.device),
-            capability=torch.cuda.get_device_capability(self.device),
-            dims=self.cfg.dims,
-            batch=batch,
-            activation=self.cfg.activation,
-            dtype=self.cfg.dtype,
-            default=int(self.cfg.grid_z_max_layers),
-        )
+        cap = None
+        if self._hierarchical_policy is not None:
+            try:
+                sig = self._active_kernel_signature(batch)
+                row = self._hierarchical_policy.lookup_execution(
+                    dims=self.cfg.dims, batch=batch, activation=self.cfg.activation,
+                    dtype=self.cfg.dtype, kernel_sig=sig,
+                )
+                if row is not None:
+                    cap = int((row.get("best") or {}).get("grid_z_max_layers", self.cfg.grid_z_max_layers))
+            except Exception:
+                cap = None
+        if cap is None:
+            from .gridz_tuning import lookup_grid_z_cap
+            cap = lookup_grid_z_cap(
+                self.cfg.grid_z_policy_path,
+                device_name=torch.cuda.get_device_name(self.device),
+                capability=torch.cuda.get_device_capability(self.device),
+                dims=self.cfg.dims,
+                batch=batch,
+                activation=self.cfg.activation,
+                dtype=self.cfg.dtype,
+                default=int(self.cfg.grid_z_max_layers),
+            )
         cap = max(0, int(cap))
         if cap == self._grid_z_cap:
             return
@@ -159,6 +262,7 @@ class TileLangIPC:
         """
         B = x_input.shape[1]
         self._apply_grid_z_policy(B)
+        self._apply_hierarchical_recompute_policy(B)
         if x_input.shape[0] != self.cfg.dims[-1] or y_target.shape[0] != self.cfg.dims[0]:
             raise ValueError("Batch dimensions do not match network dims")
         if self.x is None or self.e is None or self.x[0].shape[1] != B:
@@ -168,7 +272,7 @@ class TileLangIPC:
             self._e_grouped = []
             self._a_grouped = None
 
-            if self.cfg.recompute_activation:
+            if self.recompute_activation:
                 self.a = None
             else:
                 self.a = [None] * len(self.cfg.dims)  # type: ignore[list-item]
@@ -237,7 +341,7 @@ class TileLangIPC:
                 "inference", self.cfg.dims[l], self.cfg.dims[l - 1], self.x[l].shape[1]
             ),
             self.cfg.gamma,
-            not self.cfg.recompute_activation,
+            not self.recompute_activation,
         )
 
     def _get_weight_kernel(self, l: int):
@@ -252,7 +356,7 @@ class TileLangIPC:
                 "weight", self.cfg.dims[l], self.cfg.dims[l + 1], self.x[l].shape[1]
             ),
             self.cfg.alpha,
-            self.cfg.recompute_activation,
+            self.recompute_activation,
         )
 
     def _get_prediction_batch_kernel(self, group: LayerBatchGroup):
@@ -278,7 +382,7 @@ class TileLangIPC:
             str(self.cfg.dtype).split(".")[-1],
             self._tuned_or_default("inference", group.width, group.width, B),
             self.cfg.gamma,
-            not self.cfg.recompute_activation,
+            not self.recompute_activation,
         )
 
     def _get_weight_batch_kernel(self, group: LayerBatchGroup):
@@ -292,7 +396,7 @@ class TileLangIPC:
             str(self.cfg.dtype).split(".")[-1],
             self._tuned_or_default("weight", group.width, group.width, B),
             self.cfg.alpha,
-            self.cfg.recompute_activation,
+            self.recompute_activation,
         )
 
     @torch.no_grad()

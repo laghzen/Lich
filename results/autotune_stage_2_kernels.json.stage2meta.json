@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "created_at": 1790873608.7750173,
+  "stage2": "2.2",
+  "device": "NVIDIA GeForce RTX 3060 Laptop GPU",
+  "capability": [
+    8,
+    6
+  ],
+  "tilelang_version": "0.1.13",
+  "kernel_source_fingerprint": "58586b96ab17b861d0b9",
+  "runtime_fingerprint": "f324c1eba0bb83e5b45e",
+  "v12_engine": "online_racing_v12_fast_knn_ei_batch_racing"
+}
